@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import func
 from ..database import get_db
 from .. import models
 from ..utils.security import (
@@ -47,3 +48,30 @@ def read_current_user(current_user: dict = Depends(get_current_user), db: Sessio
     if not user:
         raise HTTPException(status_code=404, detail="Utilisateur introuvable.")
     return user
+
+
+
+# 🧩 Route : obtenir le score total du joueur connecté
+@router.get("/score_total")
+def get_user_total_score(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    total_score = db.query(func.sum(models.PlayerMission.score)).filter(
+        models.PlayerMission.user_id == current_user["user_id"]
+    ).scalar() or 0
+    return {"user_id": current_user["user_id"], "username": current_user["username"], "total_score": total_score}
+
+
+# 🏆 Route : classement global des joueurs
+@router.get("/leaderboard")
+def get_leaderboard(db: Session = Depends(get_db)):
+    leaderboard = (
+        db.query(
+            models.User.username,
+            func.coalesce(func.sum(models.PlayerMission.score), 0).label("total_score")
+        )
+        .outerjoin(models.PlayerMission, models.User.id == models.PlayerMission.user_id)
+        .group_by(models.User.username)
+        .order_by(func.sum(models.PlayerMission.score).desc())
+        .all()
+    )
+
+    return [{"username": row.username, "total_score": row.total_score or 0} for row in leaderboard]

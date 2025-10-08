@@ -1,14 +1,15 @@
 from fastapi import FastAPI
 from .database import Base, engine
-from .routes import users
+from .routes import users, missions
+from .routes import users, missions, gameplay
 
 app = FastAPI(title="Mission Vitale API")
 
-# Création des tables SQLite
 Base.metadata.create_all(bind=engine)
 
-# Inclusion de la route users
 app.include_router(users.router)
+app.include_router(missions.router)
+app.include_router(gameplay.router)
 
 @app.get("/")
 def read_root():
