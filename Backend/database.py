@@ -1,4 +1,3 @@
-# Backend/database.py
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
@@ -9,10 +8,9 @@ engine = create_engine(
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
 Base = declarative_base()
 
-# ✅ Dépendance FastAPI pour récupérer une session DB par requête
+# Dépendance pour obtenir une session de base de données
 def get_db():
     db = SessionLocal()
     try:

@@ -1,4 +1,3 @@
-# Backend/schemas.py
 from datetime import datetime
 from pydantic import BaseModel, constr
 
@@ -15,7 +14,7 @@ class UserRead(UserBase):
     id: int
     created_at: datetime
     class Config:
-        from_attributes = True  # (Pydantic v2) remplace from_orm=True
+        orm_mode = True  # ✅ Remplace from_attributes par orm_mode
 
 class Token(BaseModel):
     access_token: str
