@@ -1,6 +1,11 @@
 // src/lib/api.ts
-// URL de l'API FastAPI (définie dans .env : VITE_API_URL=http://127.0.0.1:8000)
+
+// Base URL de l'API (configurable via .env : VITE_API_URL=http://127.0.0.1:8000)
 const API_URL = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000";
+
+/* -------------------------------------------------- */
+/* ------------------- Core wrapper ----------------- */
+/* -------------------------------------------------- */
 
 type ApiOptions = {
   method?: string;
@@ -10,12 +15,6 @@ type ApiOptions = {
   signal?: AbortSignal;
 };
 
-/**
- * Wrapper fetch générique :
- * - envoie/parse le JSON
- * - gère CORS
- * - remonte un message d'erreur utile si non-OK
- */
 export async function api(path: string, opts: ApiOptions = {}) {
   const { method = "GET", body, token, headers = {}, signal } = opts;
 
@@ -29,7 +28,6 @@ export async function api(path: string, opts: ApiOptions = {}) {
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
     cache: "no-store",
-    keepalive: false,
     signal,
   });
 
@@ -48,46 +46,76 @@ export async function api(path: string, opts: ApiOptions = {}) {
   return payload;
 }
 
-/* ------------------------------------------------------------------ */
-/* -------------------------- Endpoints ------------------------------ */
-/* ------------------------------------------------------------------ */
+/* -------------------------------------------------- */
+/* --------------------- Types ---------------------- */
+/* -------------------------------------------------- */
+
+export type LoginResponse = { access_token: string; token_type: string };
+
+export type MissionCreate = {
+  title: string;
+  description?: string;
+  difficulty?: string;
+  max_score?: number;
+};
+
+export type PuzzleCreate = {
+  title: string;
+  type: "QUIZ" | "CODE" | "DND" | "SCHEMA";
+  payload: any;
+  solution?: any;
+  max_score?: number;
+  mission_id: number; // 🔗 mission parente
+};
+
+/* -------------------------------------------------- */
+/* ------------------- Endpoints -------------------- */
+/* -------------------------------------------------- */
 
 export const endpoints = {
-  /* ---------- Auth ---------- */
+  /* ---------- Users / Auth ---------- */
   register: (username: string, password: string) =>
     api("/users/register", { method: "POST", body: { username, password } }),
 
   login: (username: string, password: string) =>
-    api("/users/login", {
-      method: "POST",
-      body: { username, password },
-    }) as Promise<{ access_token: string; token_type: string }>,
+    api("/users/login", { method: "POST", body: { username, password } }) as Promise<LoginResponse>,
 
   me: (token: string) => api("/users/me", { token }),
 
-  /* ---------- Utilisateurs / Classement ---------- */
   listUsers: (token: string) => api("/users", { token }),
-  myTotalScore: (token: string) => api("/users/score_total", { token }),
+
   leaderboard: () => api("/users/leaderboard"),
 
-  /* ---------- Gameplay / Sessions ---------- */
-  startSession: (token: string, durationSeconds = 1200) =>
-    api("/game/session", {
-      method: "POST",
-      token,
-      body: { duration_seconds: durationSeconds },
-    }),
+  myTotalScore: (token: string) => api("/users/score_total", { token }),
 
-  getSessionCurrent: (token: string) => api("/game/session/current", { token }),
+  /* ---------- Missions ---------- */
+  createMission: (body: MissionCreate) =>
+    api("/missions", { method: "POST", body }),
+
+  listMissions: () => api("/missions"),
+
+  getMission: (id: number) => api(`/missions/${id}`),
+
+  listPuzzlesForMission: (missionId: number) =>
+    api(`/missions/${missionId}/puzzles`),
 
   /* ---------- Puzzles ---------- */
-  listPuzzles: (token: string) => api("/game/puzzles", { token }),
-  getPuzzle: (token: string, id: number) => api(`/game/puzzles/${id}`, { token }),
+  createPuzzle: (body: PuzzleCreate) =>
+    api("/game/puzzles", { method: "POST", body }),
 
-  submitAnswer: (token: string, puzzle_id: number, answer: unknown) =>
-    api("/game/submit", {
-      method: "POST",
-      token,
-      body: { puzzle_id, answer },
-    }),
+  // si missionId est fourni, on filtre coté backend ?mission_id=...
+  listPuzzles: (missionId?: number) =>
+    missionId != null ? api(`/game/puzzles?mission_id=${missionId}`) : api("/game/puzzles"),
+
+  getPuzzle: (id: number) => api(`/game/puzzles/${id}`),
+
+  /* ---------- Gameplay / Session ---------- */
+  startSession: (token: string, durationSeconds = 1200) =>
+    api("/game/session", { method: "POST", token, body: { duration_seconds: durationSeconds } }),
+
+  getSessionCurrent: (token: string) =>
+    api("/game/session/current", { token }),
+
+  submitAnswer: (token: string | null, puzzle_id: number, answer: unknown) =>
+    api("/game/submit", { method: "POST", token: token ?? undefined, body: { puzzle_id, answer } }),
 };

@@ -9,20 +9,38 @@ export interface User {
   created_at: string;
 }
 
-/** Ancienne notion — gardée si tu utilises encore les missions */
+// src/types.ts
+export type MediaKind = "image" | "gif" | "video" | "lottie";
+
+export interface MediaSpec {
+  kind: MediaKind;           // "image" | "gif" | "video" | "lottie"
+  src: string;               // ex: "/assets/soins/saignement.json" ou ".mp4" ou ".png"
+  poster?: string;           // optionnel pour <video>
+  caption?: string;          // légende affichée sous le média
+  loop?: boolean;            // défaut true
+  autoplay?: boolean;        // défaut true
+  width?: number;            // rendu (px) optionnel
+  height?: number;           // rendu (px) optionnel
+}
+
 export interface Mission {
   id: number;
   title: string;
   description: string;
   difficulty: string;
   max_score: number;
+  created_at: string;
 }
 
-/** Puzzles (QUIZ / CODE / DND / SCHEMA) renvoyés par /game/puzzles */
 export interface Puzzle {
   id: number;
+  mission_id: number;
   title: string;
-  type: "QUIZ" | "CODE" | "DND" | "SCHEMA";
-  payload: any;            // varie selon le type
+  // nouveaux types
+  type: "QUIZ" | "CODE" | "DND" | "SCHEMA" | "IMG_QUIZ" | "IMG_RECON";
+  payload: any;
+  solution?: any;
   max_score: number;
+  created_at?: string;
 }
+

@@ -1,14 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .database import Base, engine
-from .routes import users, missions
+from .routes import users, missions, game
 
 # Ces imports sont optionnels : ils seront inclus seulement s'ils existent
-try:
-    from .routes import gameplay
-    HAS_GAMEPLAY = True
-except Exception:
-    HAS_GAMEPLAY = False
 
 try:
     from .routes import collab
@@ -34,9 +29,9 @@ Base.metadata.create_all(bind=engine)
 
 # Routes
 app.include_router(users.router)
+app.include_router(missions.router, prefix="/missions", tags=["Missions"])
+app.include_router(game.router, prefix="/game", tags=["Game"])
 app.include_router(missions.router)
-if HAS_GAMEPLAY:
-    app.include_router(gameplay.router)
 if HAS_COLLAB:
     app.include_router(collab.router)
 

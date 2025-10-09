@@ -1,8 +1,14 @@
-from datetime import datetime
-from pydantic import BaseModel, constr
-from typing import Any, List, Dict, Optional
-from typing import Optional, Dict, Any, List
+# Backend/schemas.py
+from __future__ import annotations
 
+from datetime import datetime
+from typing import Any, Dict, Optional, Literal, List
+
+from pydantic import BaseModel, Field, constr
+
+# =========================
+# Users / Auth
+# =========================
 class UserBase(BaseModel):
     username: constr(min_length=3, max_length=50)
 
@@ -15,27 +21,35 @@ class UserLogin(UserBase):
 class UserRead(UserBase):
     id: int
     created_at: datetime
-    class Config:
-        orm_mode = True  # ✅ Remplace from_attributes par orm_mode
+    model_config = {"from_attributes": True}
 
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
 
-class MissionBase(BaseModel):
+
+# =========================
+# Missions
+# =========================
+class MissionCreate(BaseModel):
     title: str
-    description: str
-    difficulty: str = "Facile"
+    description: str = ""
+    difficulty: str = "facile"
     max_score: int = 100
 
-class MissionCreate(MissionBase):
-    pass
-
-class MissionRead(MissionBase):
+class MissionOut(BaseModel):
     id: int
-    class Config:
-        orm_mode = True
+    title: str
+    description: str
+    difficulty: str
+    max_score: int
+    created_at: datetime
+    model_config = {"from_attributes": True}
 
+
+# =========================
+# Player ↔ Mission (progression)
+# =========================
 class PlayerMissionBase(BaseModel):
     mission_id: int
     score: int = 0
@@ -48,12 +62,12 @@ class PlayerMissionRead(PlayerMissionBase):
     id: int
     user_id: int
     date: datetime
-    class Config:
-        orm_mode = True
+    model_config = {"from_attributes": True}
 
 
-
-# Timer / session
+# =========================
+# Timer / Session de jeu
+# =========================
 class GameSessionCreate(BaseModel):
     duration_seconds: int = 1200  # 20 minutes
 
@@ -62,33 +76,45 @@ class GameSessionRead(BaseModel):
     user_id: int
     started_at: datetime
     expires_at: str
-    class Config:
-        orm_mode = True
+    model_config = {"from_attributes": True}
 
-# Puzzle
-class PuzzleBase(BaseModel):
+
+# =========================
+# Puzzles
+# =========================
+
+# ✅ Tous les types autorisés par l’API
+PuzzleType = Literal["QUIZ", "CODE", "DND", "SCHEMA", "IMG_QUIZ", "IMG_RECON"]
+
+class PuzzleCreate(BaseModel):
     title: str
-    type: str  # "QUIZ" | "CODE" | "DND" | "SCHEMA"
-    payload: Dict[str, Any]
-    solution: Dict[str, Any]
+    type: PuzzleType
+    payload: Dict[str, Any] = Field(default_factory=dict)
+    solution: Optional[Dict[str, Any]] = None
     max_score: int = 100
+    mission_id: int = Field(..., description="ID de la mission parente")
 
-class PuzzleCreate(PuzzleBase):
-    pass
-
-class PuzzleRead(BaseModel):
+class PuzzleOut(BaseModel):
     id: int
+    mission_id: int
     title: str
     type: str
     payload: Dict[str, Any]
+    solution: Optional[Dict[str, Any]] = None
     max_score: int
-    class Config:
-        orm_mode = True
+    created_at: datetime
+    model_config = {"from_attributes": True}
 
-# Soumission (réponse joueur)
+# (alias rétro-compat si ton code importait PuzzleRead)
+PuzzleRead = PuzzleOut
+
+
+# =========================
+# Soumissions (réponses joueur)
+# =========================
 class SubmissionIn(BaseModel):
     puzzle_id: int
-    answer: Dict[str, Any]  # structure varie selon type
+    answer: Dict[str, Any]  # structure varie selon le type
 
 class SubmissionOut(BaseModel):
     puzzle_id: int
@@ -97,11 +123,11 @@ class SubmissionOut(BaseModel):
     feedback: Optional[str] = None
 
 
-
-
-# Collaboration / Rooms
+# =========================
+# Collaboration / Salles
+# =========================
 class CollabRoomCreate(BaseModel):
-    duration_seconds: int = 1200  # 20 min par défaut
+    duration_seconds: int = 1200  # 20 min
 
 class CollabRoomRead(BaseModel):
     id: int
@@ -109,8 +135,7 @@ class CollabRoomRead(BaseModel):
     status: str
     started_at: datetime
     expires_at: Optional[str] = None
-    class Config:
-        orm_mode = True
+    model_config = {"from_attributes": True}
 
 class JoinRoomIn(BaseModel):
     role: Optional[str] = None  # si None => auto-attribution
@@ -119,6 +144,3 @@ class MemberRead(BaseModel):
     user_id: int
     username: str
     role: Optional[str] = None
-
-# (Déjà présent côté gameplay/puzzles si tu as suivi l’étape précédente)
-# PuzzleRead, SubmissionIn/Out, etc.
